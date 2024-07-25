@@ -16,11 +16,8 @@ class Ant:
 
             SIZE = self.app.CELL_SIZE
             rect = self.x * SIZE, self.y * SIZE, max(SIZE - 1, 1), max(SIZE - 1, 1)
-            
             if not value:
-                pygame.draw.rect(self.app.screen, self.color, rect)
-            else:
-                pygame.draw.rect(self.app.screen, 'white', rect)
+                pygame.draw.rect(self.app.screen, 'black', rect)
 
             self.increments.rotate(1) if value else self.increments.rotate(-1)
             dx, dy = self.increments[0]
@@ -28,7 +25,7 @@ class Ant:
             self.y = (self.y + dy) % self.app.ROWS
 
 class App:
-    def __init__(self, WIDTH = 1600, HEIGHT = 900, CELL_SIZE = 1, NUM_ANTS = 400):
+    def __init__(self, WIDTH = 1600, HEIGHT = 900, CELL_SIZE = 8, NUM_ANTS = 400):
         pygame.init()
         self.screen = pygame.display.set_mode([WIDTH, HEIGHT])
         self.clock = pygame.time.Clock()
@@ -37,14 +34,8 @@ class App:
         self.ROWS, self.COLS = HEIGHT // CELL_SIZE, WIDTH // CELL_SIZE
         self.grid = [[0 for col in range(self.COLS)] for row in range(self.ROWS)]
 
-        self.ants = []
-
-        for i in range(2):
-            for j in range(4):
-                ant = Ant(self, pos=[randrange(self.COLS), randrange(self.ROWS)], color='white')
-                self.ants.append(ant)
-
-                #self.ants = [Ant(self, pos=[randrange(self.COLS), randrange(self.ROWS)], color='white') for _ in range(NUM_ANTS)]
+        colors1 = [(50, 30, i) for i in range(256)]
+        self.ants = [Ant(self, pos=[randrange(self.COLS), randrange(self.ROWS)], color=choice(colors1)) for _ in range(NUM_ANTS)]
 
     def run(self):
         while True:
@@ -52,8 +43,8 @@ class App:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     exit()
-            
             pygame.display.set_caption(f'Langton\'s Ant Simulation - FPS: {int(self.clock.get_fps())}')
+            self.screen.fill('white')  # Clear the screen with a white background
 
             [ant.run() for ant in self.ants]
 

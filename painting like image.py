@@ -26,7 +26,7 @@ class Ant:
 
 
 class App:
-    def __init__(self, WIDTH = 1920, HEIGHT = 1080, CELL_SIZE = 1, NUM_ANTS = 50):
+    def __init__(self, WIDTH = 1600, HEIGHT = 900, CELL_SIZE = 1, NUM_ANTS = 50):
         pygame.init()
         self.screen = pygame.display.set_mode([WIDTH, HEIGHT])
         self.clock = pygame.time.Clock()
@@ -51,6 +51,7 @@ class App:
         while True:
             [ant.run() for ant in self.ants]
 
+            pygame.display.set_caption(f'Langton\'s Ant Simulation - FPS: {int(self.clock.get_fps())}')
             [exit() for i in pygame.event.get() if i.type == pygame.QUIT]
             pygame.display.flip()
             self.clock.tick()
