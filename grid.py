@@ -17,10 +17,7 @@ class Ant:
             SIZE = self.app.CELL_SIZE
             rect = self.x * SIZE, self.y * SIZE, max(SIZE - 1, 1), max(SIZE - 1, 1)
             
-            if not value:
-                pygame.draw.rect(self.app.screen, self.color, rect)
-            else:
-                pygame.draw.rect(self.app.screen, self.color, rect)
+            pygame.draw.rect(self.app.screen, self.color, rect)
 
             self.increments.rotate(1) if value else self.increments.rotate(-1)
             dx, dy = self.increments[0]
@@ -33,30 +30,17 @@ class Ant:
         return channel(), channel(), channel()
 
 class App:
-    def __init__(self, WIDTH = 1600, HEIGHT = 900, CELL_SIZE = 4, NUM_ANTS = 400):
+    def __init__(self, CELL_SIZE = 16, NUM_ANTS = 400):
         pygame.init()
+        WIDTH, HEIGHT = CELL_SIZE * 100, CELL_SIZE * 55 + (CELL_SIZE + 40) # Add 40 pixels to the height to make space for the color bar
         self.screen = pygame.display.set_mode([WIDTH, HEIGHT])
         self.clock = pygame.time.Clock()
+
+        self.is_placement_phase = True
 
         self.CELL_SIZE = CELL_SIZE
         self.ROWS, self.COLS = HEIGHT // CELL_SIZE, WIDTH // CELL_SIZE
         self.grid = [[0 for col in range(self.COLS)] for row in range(self.ROWS)]
-
-        self.ants = []
-
-        GROUP_COLS = 8
-        GROUP_ROWS = 8
-
-        X_OFFSET = 40
-        Y_OFFSET = 10
-
-        for i in range(GROUP_ROWS):
-            for j in range(GROUP_COLS):
-                for _ in range(NUM_ANTS // (GROUP_COLS * GROUP_ROWS)):
-                    ant = Ant(self, pos=[50 + j * X_OFFSET, Y_OFFSET + i * Y_OFFSET], color=Ant.get_color())
-                    self.ants.append(ant)
-
-                #self.ants = [Ant(self, pos=[randrange(self.COLS), randrange(self.ROWS)], color='white') for _ in range(NUM_ANTS)]
 
     def run(self):
         while True:
@@ -64,13 +48,34 @@ class App:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE and self.is_placement_phase:
+                        self.is_placement_phase = False
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.is_placement_phase:
+                    x, y = event.pos
+                    col, row = x // self.CELL_SIZE, y // self.CELL_SIZE
+                    self.grid[row][col] = not self.grid[row][col]
             
             pygame.display.set_caption(f'Langton\'s Ant Simulation - FPS: {int(self.clock.get_fps())}')
 
-            [ant.run() for ant in self.ants]
+            if self.is_placement_phase: 
+                self.draw_selection_grid()
+
+            #[ant.run() for ant in self.ants]
 
             pygame.display.flip()
             self.clock.tick()
+
+    def draw_selection_grid(self):
+        for row in range(self.ROWS):
+            for col in range(self.COLS):
+                pygame.draw.line(self.screen, 'white', (col * self.CELL_SIZE, 0), (col * self.CELL_SIZE, self.ROWS * self.CELL_SIZE))
+                pygame.draw.line(self.screen, 'white', (0, row * self.CELL_SIZE), (self.COLS * self.CELL_SIZE, row * self.CELL_SIZE))
+        
+            # Draw the rightmost vertical line
+            pygame.draw.line(self.screen, 'white', (self.COLS * self.CELL_SIZE - 1, 0), (self.COLS * self.CELL_SIZE - 1, self.ROWS * self.CELL_SIZE))
+            # Draw the bottommost horizontal line
+            pygame.draw.line(self.screen, 'white', (0, self.ROWS * self.CELL_SIZE - 1), (self.COLS * self.CELL_SIZE, self.ROWS * self.CELL_SIZE - 1))
 
 if __name__ == "__main__":
     app = App()
