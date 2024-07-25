@@ -20,15 +20,20 @@ class Ant:
             if not value:
                 pygame.draw.rect(self.app.screen, self.color, rect)
             else:
-                pygame.draw.rect(self.app.screen, 'white', rect)
+                pygame.draw.rect(self.app.screen, self.color, rect)
 
             self.increments.rotate(1) if value else self.increments.rotate(-1)
             dx, dy = self.increments[0]
             self.x = (self.x + dx) % self.app.COLS
             self.y = (self.y + dy) % self.app.ROWS
 
+    @staticmethod
+    def get_color():
+        channel = lambda: randrange(30, 220) #Lambda function that returns a random number between 30 and 220
+        return channel(), channel(), channel()
+
 class App:
-    def __init__(self, WIDTH = 1600, HEIGHT = 900, CELL_SIZE = 1, NUM_ANTS = 400):
+    def __init__(self, WIDTH = 1600, HEIGHT = 900, CELL_SIZE = 4, NUM_ANTS = 400):
         pygame.init()
         self.screen = pygame.display.set_mode([WIDTH, HEIGHT])
         self.clock = pygame.time.Clock()
@@ -39,10 +44,17 @@ class App:
 
         self.ants = []
 
-        for i in range(2):
-            for j in range(4):
-                ant = Ant(self, pos=[randrange(self.COLS), randrange(self.ROWS)], color='white')
-                self.ants.append(ant)
+        GROUP_COLS = 8
+        GROUP_ROWS = 8
+
+        X_OFFSET = 40
+        Y_OFFSET = 10
+
+        for i in range(GROUP_ROWS):
+            for j in range(GROUP_COLS):
+                for _ in range(NUM_ANTS // (GROUP_COLS * GROUP_ROWS)):
+                    ant = Ant(self, pos=[50 + j * X_OFFSET, Y_OFFSET + i * Y_OFFSET], color=Ant.get_color())
+                    self.ants.append(ant)
 
                 #self.ants = [Ant(self, pos=[randrange(self.COLS), randrange(self.ROWS)], color='white') for _ in range(NUM_ANTS)]
 
