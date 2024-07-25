@@ -34,11 +34,13 @@ class App:
         pygame.init()
         self.COLOR_BAR_OFFSET = 50
         self.CELL_SIZE = CELL_SIZE
-        self.WIDTH, self.HEIGTH = self.CELL_SIZE * 100, self.CELL_SIZE * 55 + (self.CELL_SIZE + self.COLOR_BAR_OFFSET) # Add 50 pixels to the self.HEIGTH to make space for the color bar
-        self.screen = pygame.display.set_mode([self.WIDTH, self.HEIGTH])
+        self.WIDTH, self.HEIGTH = 1200, 900
+        self.screen = pygame.display.set_mode([self.WIDTH, self.HEIGTH + (self.CELL_SIZE + self.COLOR_BAR_OFFSET)]) # Add 50 pixels to the self.HEIGTH to make space for the color bar
         self.clock = pygame.time.Clock()
 
-        self.is_placement_phase = True
+        self.is_placement_phase: bool = True
+        self.placement_phase_grid = pygame.image.load('selection_phase_grid.png')
+        self.placement_phase_grid_rect = self.placement_phase_grid.get_rect(center = (self.WIDTH // 2, self.HEIGTH // 2))
 
         self.ROWS, self.COLS = (self.HEIGTH - (self.CELL_SIZE + self.COLOR_BAR_OFFSET)) // self.CELL_SIZE, self.WIDTH // self.CELL_SIZE
         self.grid = [[0 for col in range(self.COLS)] for row in range(self.ROWS)]
@@ -60,22 +62,12 @@ class App:
             pygame.display.set_caption(f'Langton\'s Ant Simulation - FPS: {int(self.clock.get_fps())}')
 
             if self.is_placement_phase: 
-                self.draw_selection_grid()
+                self.screen.blit(self.placement_phase_grid, self.placement_phase_grid_rect)
 
             #[ant.run() for ant in self.ants]
 
             pygame.display.flip()
             self.clock.tick()
-
-    def draw_selection_grid(self):
-        
-        for col in range(self.COLS):
-            pygame.draw.line(self.screen, 'white', (col * self.CELL_SIZE, 0), (col * self.CELL_SIZE, self.HEIGTH - (self.CELL_SIZE + self.COLOR_BAR_OFFSET))) # Draw the vertical lines
-        pygame.draw.line(self.screen, 'white', (self.WIDTH - 1, 0), (self.WIDTH - 1, self.HEIGTH - (self.CELL_SIZE + self.COLOR_BAR_OFFSET))) # Draw the rightmost vertical line
-
-        for row in range(self.ROWS):
-            pygame.draw.line(self.screen, 'white', (0, row * self.CELL_SIZE), (self.COLS * self.CELL_SIZE, row * self.CELL_SIZE)) # Draw the horizontal lines
-        pygame.draw.line(self.screen, 'white', (0, self.HEIGTH - (self.CELL_SIZE + self.COLOR_BAR_OFFSET)), (self.WIDTH, self.HEIGTH - (self.CELL_SIZE + self.COLOR_BAR_OFFSET))) # Draw the bottommost horizontal line
 
 if __name__ == "__main__":
     app = App()
