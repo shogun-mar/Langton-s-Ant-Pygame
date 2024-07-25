@@ -14,7 +14,7 @@ class Ant:
             value = self.app.grid[self.y][self.x]
             self.app.grid[self.y][self.x] = not value
 
-            SIZE = self.app.CELL_SIZE
+            SIZE = self.app.self.CELL_SIZE
             rect = self.x * SIZE, self.y * SIZE, max(SIZE - 1, 1), max(SIZE - 1, 1)
             
             pygame.draw.rect(self.app.screen, self.color, rect)
@@ -32,14 +32,15 @@ class Ant:
 class App:
     def __init__(self, CELL_SIZE = 16, NUM_ANTS = 400):
         pygame.init()
-        WIDTH, HEIGHT = CELL_SIZE * 100, CELL_SIZE * 55 + (CELL_SIZE + 40) # Add 40 pixels to the height to make space for the color bar
-        self.screen = pygame.display.set_mode([WIDTH, HEIGHT])
+        self.COLOR_BAR_OFFSET = 50
+        self.CELL_SIZE = CELL_SIZE
+        self.WIDTH, self.HEIGTH = self.CELL_SIZE * 100, self.CELL_SIZE * 55 + (self.CELL_SIZE + self.COLOR_BAR_OFFSET) # Add 50 pixels to the self.HEIGTH to make space for the color bar
+        self.screen = pygame.display.set_mode([self.WIDTH, self.HEIGTH])
         self.clock = pygame.time.Clock()
 
         self.is_placement_phase = True
 
-        self.CELL_SIZE = CELL_SIZE
-        self.ROWS, self.COLS = HEIGHT // CELL_SIZE, WIDTH // CELL_SIZE
+        self.ROWS, self.COLS = (self.HEIGTH - (self.CELL_SIZE + self.COLOR_BAR_OFFSET)) // self.CELL_SIZE, self.WIDTH // self.CELL_SIZE
         self.grid = [[0 for col in range(self.COLS)] for row in range(self.ROWS)]
 
     def run(self):
@@ -53,7 +54,7 @@ class App:
                         self.is_placement_phase = False
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.is_placement_phase:
                     x, y = event.pos
-                    col, row = x // self.CELL_SIZE, y // self.CELL_SIZE
+                    col, row = x // self.self.CELL_SIZE, y // self.self.CELL_SIZE
                     self.grid[row][col] = not self.grid[row][col]
             
             pygame.display.set_caption(f'Langton\'s Ant Simulation - FPS: {int(self.clock.get_fps())}')
@@ -67,15 +68,14 @@ class App:
             self.clock.tick()
 
     def draw_selection_grid(self):
-        for row in range(self.ROWS):
-            for col in range(self.COLS):
-                pygame.draw.line(self.screen, 'white', (col * self.CELL_SIZE, 0), (col * self.CELL_SIZE, self.ROWS * self.CELL_SIZE))
-                pygame.draw.line(self.screen, 'white', (0, row * self.CELL_SIZE), (self.COLS * self.CELL_SIZE, row * self.CELL_SIZE))
         
-            # Draw the rightmost vertical line
-            pygame.draw.line(self.screen, 'white', (self.COLS * self.CELL_SIZE - 1, 0), (self.COLS * self.CELL_SIZE - 1, self.ROWS * self.CELL_SIZE))
-            # Draw the bottommost horizontal line
-            pygame.draw.line(self.screen, 'white', (0, self.ROWS * self.CELL_SIZE - 1), (self.COLS * self.CELL_SIZE, self.ROWS * self.CELL_SIZE - 1))
+        for col in range(self.COLS):
+            pygame.draw.line(self.screen, 'white', (col * self.CELL_SIZE, 0), (col * self.CELL_SIZE, self.HEIGTH - (self.CELL_SIZE + self.COLOR_BAR_OFFSET))) # Draw the vertical lines
+        pygame.draw.line(self.screen, 'white', (self.WIDTH - 1, 0), (self.WIDTH - 1, self.HEIGTH - (self.CELL_SIZE + self.COLOR_BAR_OFFSET))) # Draw the rightmost vertical line
+
+        for row in range(self.ROWS):
+            pygame.draw.line(self.screen, 'white', (0, row * self.CELL_SIZE), (self.COLS * self.CELL_SIZE, row * self.CELL_SIZE)) # Draw the horizontal lines
+        pygame.draw.line(self.screen, 'white', (0, self.HEIGTH - (self.CELL_SIZE + self.COLOR_BAR_OFFSET)), (self.WIDTH, self.HEIGTH - (self.CELL_SIZE + self.COLOR_BAR_OFFSET))) # Draw the bottommost horizontal line
 
 if __name__ == "__main__":
     app = App()
