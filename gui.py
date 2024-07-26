@@ -12,22 +12,21 @@ class Ant:
         self.increments = deque([(1, 0), (0, 1), (-1, 0), (0, -1)])
 
     def run(self):
-        if 0 <= self.x < self.app.COLS and 0 <= self.y < self.app.ROWS:
-            value = self.app.grid[self.y][self.x]
-            self.app.grid[self.y][self.x] = not value
+        SIZE = self.app.CELL_SIZE
+        base_x, base_y = self.x * SIZE + 1, self.y * SIZE + 1
+        offsetted_rect = (base_x + self.app.placement_grid_offset[0] + 1, base_y + self.app.placement_grid_offset[1] + 1, max(SIZE - 1, 1), max(SIZE - 1, 1))
+        value = self.app.grid[self.y][self.x]
+        self.app.grid[self.y][self.x] = not value
+        
+        if value:
+            pygame.draw.rect(self.app.screen, 'white', offsetted_rect)
+        else:
+            pygame.draw.rect(self.app.screen, self.color, offsetted_rect)
 
-            SIZE = self.app.CELL_SIZE
-            rect = self.x * SIZE, self.y * SIZE, max(SIZE - 1, 1), max(SIZE - 1, 1)
-            
-            if value:
-                pygame.draw.rect(self.app.screen, 'white', rect)
-            else:
-                pygame.draw.rect(self.app.screen, self.color, rect)
-
-            self.increments.rotate(1) if value else self.increments.rotate(-1)
-            dx, dy = self.increments[0]
-            self.x = (self.x + dx) % self.app.COLS
-            self.y = (self.y + dy) % self.app.ROWS
+        self.increments.rotate(1) if value else self.increments.rotate(-1)
+        dx, dy = self.increments[0]
+        self.x = (self.x + dx) % self.app.COLS
+        self.y = (self.y + dy) % self.app.ROWS
 
 class App:
     def __init__(self, CELL_SIZE = 16):
@@ -40,9 +39,9 @@ class App:
         self.clock = pygame.time.Clock()
         self.grid = [[0 for col in range(self.COLS)] for row in range(self.COLS)]
 
-        self.ant_colors = set('greenyellow goldenrod2 fuchsia deeppink4 cornflowerblue darkred darkslategrey blueviolet mediumpurple3 indigo crimson seagreen1 salmon1 purple2 plum3 palevioletred violetred springgreen4 \
+        self.ant_colors = list(set('greenyellow goldenrod2 fuchsia deeppink4 cornflowerblue darkred darkslategrey blueviolet mediumpurple3 indigo crimson seagreen1 salmon1 purple2 plum3 palevioletred violetred springgreen4 \
                           steelblue4 steelblue slateblue4 slateblue sienna2 cyan skyblue purple magenta red green blue yellow \
-                          white'.split())
+                          white'.split())) #Convert to set to remove duplicates then back to list to allow indexing
         
         self.ants = []
         self.ant_base_sprite = pygame.image.load('ant_sprite.png').convert_alpha()
@@ -73,7 +72,26 @@ class App:
 
         self.grey_cell_counter_text = self.counter_font.render(f'Grey Cells:', True, 'white')
         self.grey_cell_counter_rect = self.grey_cell_counter_text.get_rect(center = (self.WIDTH - 225, 550))
-        self.screen.blit(self.grey_cell_counter_text, self.grey_cell_counter_rect) 
+        self.screen.blit(self.grey_cell_counter_text, self.grey_cell_counter_rect)
+
+        #placement phase color grid
+        self.current_selected_color_name = None
+        self.colored_cell_size = 40
+        self.color_grid_cell_offset = 5
+        #Calculations to align the color grid to the center of the screen and move it down 200 pixels
+        self.len_ant_colors = len(self.ant_colors)
+        expected_color_grid_width =  40 * self.ROWS + 5 * (self.ROWS - 1)
+        expected_color_grid_heigth = 40 * (self.len_ant_colors % self.ROWS) + 5 * ((self.len_ant_colors % self.ROWS) - 1)
+        screen_center = self.WIDTH // 2, self.HEIGTH // 2
+        self.color_grid_origin = screen_center[0] - expected_color_grid_width // 2, (screen_center[1] - expected_color_grid_heigth // 2) + 250 
+
+        self.placement_phase_color_grid_rects = []
+        x, y = self.color_grid_origin
+        for i in range(self.len_ant_colors):
+            if i % self.ROWS == 0 and i != 0:
+                x, y = self.color_grid_origin[0], self.color_grid_origin[1] + (self.colored_cell_size + self.color_grid_cell_offset)
+            self.placement_phase_color_grid_rects.append(pygame.Rect(x, y, self.colored_cell_size, self.colored_cell_size))
+            x += (self.colored_cell_size + self.color_grid_cell_offset)
 
     def run(self):
         while True:
@@ -90,9 +108,12 @@ class App:
                         self.start_button_text = self.button_font.render('Start', True, 'white')
                         self.screen.blit(self.start_button_text, self.start_button_rect)
 
-                    elif self.placement_phase_grid_rect.collidepoint(event.pos):
+                    elif self.placement_phase_grid_rect.collidepoint(event.pos) and self.current_selected_color_name != None:
                         self.update_placement_grid(event.pos)
-            
+
+                    current_color = self.get_currently_selected_color(event.pos)
+                    if current_color != None: self.current_selected_color_name = current_color
+                        
             pygame.display.set_caption(f'Langton\'s Ant Simulation - FPS: {int(self.clock.get_fps())}')
 
             if self.is_placement_phase: 
@@ -123,10 +144,10 @@ class App:
                 self.grey_cell_counter_rect.center = (self.WIDTH - 225 - 15 * len(str(grey_cells_num)), 550)
                 self.screen.blit(self.grey_cell_counter_text, self.grey_cell_counter_rect)
 
-                #[ant.run() for ant in self.ants]
+                [ant.run() for ant in self.ants]
 
             pygame.display.flip()
-            self.clock.tick(60)
+            self.clock.tick(30)
 
     def get_white_cells(self):
         return sum(cell for row in self.grid for cell in row)
@@ -138,7 +159,7 @@ class App:
         relative_mouse_pos = pos[0] - self.placement_grid_offset[0], pos[1] - self.placement_grid_offset[1]
         x, y = relative_mouse_pos
         column, row = x // self.CELL_SIZE, y // self.CELL_SIZE
-        ant = Ant(self, (column, row), 'purple')
+        ant = Ant(self, (column, row), self.current_selected_color_name)
         self.ants.append(ant)
         self.grid[column][row] = 1
 
@@ -161,11 +182,17 @@ class App:
         for ant in self.ants:
             self.screen.blit(ant.sprite, ant.rect)
 
+    def get_currently_selected_color(self, mouse_pos):
+        for i in range(self.len_ant_colors):
+            if self.placement_phase_color_grid_rects[i].collidepoint(mouse_pos):
+                self.current_selected_color_name = self.ant_colors[i]
+                return self.ant_colors[i]
+        return None
+
+
     def draw_colors_grid(self):
-        grid_origin = self.placement_phase_grid_rect.bottomleft[0], self.placement_phase_grid_rect.bottomleft[1] + 100
-        for color in self.ant_colors:
-            pygame.draw.rect(self.screen, color, (grid_origin[0], grid_origin[1], 50, 50))
-            grid_origin = grid_origin[0] + 60, grid_origin[1]
+        for i in range(self.len_ant_colors):
+            pygame.draw.rect(self.screen, self.ant_colors[i], self.placement_phase_color_grid_rects[i])
     
 if __name__ == "__main__":
     app = App()
