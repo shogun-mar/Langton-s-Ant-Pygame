@@ -104,6 +104,8 @@ class App:
                 self.ant_counter_rect.center = (225 - 15 * len(str(num_ants)), 300)
                 self.screen.blit(self.ant_counter_text, self.ant_counter_rect)
 
+                self.draw_placement_grid()
+
             else:
                 coverup_surf = pygame.Surface(self.white_cell_counter_text.get_size())
                 self.screen.blit(coverup_surf, self.white_cell_counter_rect)
@@ -138,7 +140,6 @@ class App:
         self.ants.append(ant)
         self.grid[column][row] = 1
 
-        grid_origin_x, grid_origin_y = self.placement_grid_offset
         color_int = pygame.Color(ant.color)  # Convert named color to integer color
         sprite_pixel_array = pygame.PixelArray(self.ant_base_sprite)
         for i in range(sprite_pixel_array.shape[0]):
@@ -149,7 +150,11 @@ class App:
         
         ant.sprite = sprite_pixel_array.make_surface()  # Creates a new surface with the new pixel array.
         del sprite_pixel_array  # Delete the pixel array to unlock the surface
-        self.screen.blit(ant.sprite, (grid_origin_x + column * self.CELL_SIZE, grid_origin_y + row * self.CELL_SIZE))
+
+    def draw_placement_grid(self):
+        grid_origin_x, grid_origin_y = self.placement_grid_offset
+        for ant in self.ants:
+            self.screen.blit(ant.sprite, (grid_origin_x + ant.x * self.CELL_SIZE, grid_origin_y + ant.y * self.CELL_SIZE))
     
 if __name__ == "__main__":
     app = App()
