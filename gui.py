@@ -5,6 +5,7 @@ from random import randrange
 class Ant:
     def __init__(self, app, pos, color):
         self.app = app
+        self.sprite = None
         self.color = color
         self.x, self.y = pos
         self.increments = deque([(1, 0), (0, 1), (-1, 0), (0, -1)])
@@ -34,7 +35,7 @@ class App:
         self.ROWS = self.COLS = 16
         self.WIDTH, self.HEIGTH = 1200, 900
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGTH))
-        pygame.display.set_icon(pygame.image.load('ant_icon.png'))
+        pygame.display.set_icon(pygame.image.load('ant_window_icon.png'))
         self.clock = pygame.time.Clock()
         self.grid = [[0 for col in range(self.COLS)] for row in range(self.COLS)]
 
@@ -43,6 +44,7 @@ class App:
                           white'.split())
         
         self.ants = []
+        self.ant_base_sprite = pygame.image.load('ant_sprite.png').convert_alpha()
 
         self.is_placement_phase: bool = True
         self.placement_phase_grid = pygame.image.load('selection_phase_grid.png')
@@ -86,15 +88,12 @@ class App:
                         self.is_placement_phase = False
                         self.start_button_text = self.button_font.render('Start', True, 'white')
                         self.screen.blit(self.start_button_text, self.start_button_rect)
+
                     elif self.placement_phase_grid_rect.collidepoint(event.pos):
-                        relative_mouse_pos = event.pos[0] - self.placement_grid_offset[0], event.pos[1] - self.placement_grid_offset[1]
-                        x, y = relative_mouse_pos
-                        column, row = x // self.CELL_SIZE, y // self.CELL_SIZE
-                        self.ants.append(Ant(self, (column, row), 'white'))
-                        self.grid[column][row] = 1
+                        self.update_placement_grid(event.pos)
             
             pygame.display.set_caption(f'Langton\'s Ant Simulation - FPS: {int(self.clock.get_fps())}')
-        
+
             if self.is_placement_phase: 
                 self.screen.blit(self.placement_phase_grid, self.placement_phase_grid_rect)
 
@@ -105,7 +104,6 @@ class App:
                 self.ant_counter_rect.center = (225 - 15 * len(str(num_ants)), 300)
                 self.screen.blit(self.ant_counter_text, self.ant_counter_rect)
 
-                self.draw_already_placed_ants()
             else:
                 coverup_surf = pygame.Surface(self.white_cell_counter_text.get_size())
                 self.screen.blit(coverup_surf, self.white_cell_counter_rect)
@@ -132,8 +130,26 @@ class App:
     def is_simulation_ready(self):
         return len(self.ants) > 0
     
-    def draw_already_placed_ants(self):
+    def update_placement_grid(self, pos):
+        relative_mouse_pos = pos[0] - self.placement_grid_offset[0], pos[1] - self.placement_grid_offset[1]
+        x, y = relative_mouse_pos
+        column, row = x // self.CELL_SIZE, y // self.CELL_SIZE
+        ant = Ant(self, (column, row), 'white')
+        self.ants.append(ant)
+        self.grid[column][row] = 1
+
         grid_origin_x, grid_origin_y = self.placement_grid_offset
+        color_int = pygame.Color(ant.color)  # Convert named color to integer color
+        sprite_pixel_array = pygame.PixelArray(self.ant_base_sprite)
+        for i in range(sprite_pixel_array.shape[0]):
+            for j in range(sprite_pixel_array.shape[1]):
+                pixel_color = self.ant_base_sprite.unmap_rgb(sprite_pixel_array[i, j])  # Get the color of the pixel
+                if pygame.Color(pixel_color).a != 0:  # Check if the pixel is not fully transparent
+                    sprite_pixel_array[i, j] = (color_int.r, color_int.g, color_int.b)
+        
+        ant.sprite = sprite_pixel_array.make_surface()  # Creates a new surface with the new pixel array.
+        del sprite_pixel_array  # Delete the pixel array to unlock the surface
+        self.screen.blit(ant.sprite, (grid_origin_x + column * self.CELL_SIZE, grid_origin_y + row * self.CELL_SIZE))
     
 if __name__ == "__main__":
     app = App()
