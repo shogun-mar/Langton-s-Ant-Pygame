@@ -14,7 +14,7 @@ class Ant:
     def run(self):
         SIZE = self.app.CELL_SIZE
         base_x, base_y = self.x * SIZE + 1, self.y * SIZE + 1
-        offsetted_rect = (base_x + self.app.placement_grid_offset[0] + 1, base_y + self.app.placement_grid_offset[1] + 1, max(SIZE - 1, 1), max(SIZE - 1, 1))
+        offsetted_rect = (base_x + self.app.placement_grid_offset[0], base_y + self.app.placement_grid_offset[1], max(SIZE - 1, 1) + 1, max(SIZE - 1, 1) + 1)
         value = self.app.grid[self.y][self.x]
         self.app.grid[self.y][self.x] = not value
         
@@ -29,14 +29,15 @@ class Ant:
         self.y = (self.y + dy) % self.app.ROWS
 
 class App:
-    def __init__(self, CELL_SIZE = 16):
+    def __init__(self):
         pygame.init()
-        self.CELL_SIZE = CELL_SIZE
+        self.CELL_SIZE = 16
         self.ROWS = self.COLS = 16
         self.WIDTH, self.HEIGTH = 1200, 900
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGTH))
         pygame.display.set_icon(pygame.image.load('ant_window_icon.png'))
         self.clock = pygame.time.Clock()
+        self.MAX_FPS = 10
         self.grid = [[0 for col in range(self.COLS)] for row in range(self.COLS)]
 
         self.ant_colors = list(set('greenyellow goldenrod2 fuchsia deeppink4 cornflowerblue darkred darkslategrey blueviolet mediumpurple3 indigo crimson seagreen1 salmon1 purple2 plum3 palevioletred violetred springgreen4 \
@@ -47,9 +48,12 @@ class App:
         self.ant_base_sprite = pygame.image.load('ant_sprite.png').convert_alpha()
 
         self.is_placement_phase: bool = True
-        self.placement_phase_grid = pygame.image.load('selection_phase_grid.png')
+        self.placement_phase_grid = pygame.image.load('selection_phase_grid.png').convert_alpha()
         self.placement_phase_grid_rect = self.placement_phase_grid.get_rect(center = (self.WIDTH // 2, self.HEIGTH // 2))
         self.placement_grid_offset = self.placement_phase_grid_rect.topleft
+
+        self.simulation_phase_grid = pygame.image.load('simulation_phase_grid.png').convert_alpha()
+        self.simulation_phase_grid_rect = self.simulation_phase_grid.get_rect(center = self.placement_phase_grid_rect.center)
 
         self.title_font = pygame.font.Font('mexcellent/mexcellent 3d.otf', 64)
         self.title_text = self.title_font.render('Langton\'s Ant Simulation', True, 'white')
@@ -80,18 +84,22 @@ class App:
         self.color_grid_cell_offset = 5
         #Calculations to align the color grid to the center of the screen and move it down 200 pixels
         self.len_ant_colors = len(self.ant_colors)
-        expected_color_grid_width =  40 * self.ROWS + 5 * (self.ROWS - 1)
-        expected_color_grid_heigth = 40 * (self.len_ant_colors % self.ROWS) + 5 * ((self.len_ant_colors % self.ROWS) - 1)
+        self.expected_color_grid_width =  40 * self.ROWS + 5 * (self.ROWS - 1)
+        self.expected_color_grid_heigth = 40 * (self.len_ant_colors // self.ROWS) + 5 * ((self.len_ant_colors // self.ROWS) - 1)
         screen_center = self.WIDTH // 2, self.HEIGTH // 2
-        self.color_grid_origin = screen_center[0] - expected_color_grid_width // 2, (screen_center[1] - expected_color_grid_heigth // 2) + 250 
+        self.color_grid_origin = screen_center[0] - self.expected_color_grid_width // 2, (screen_center[1] - self.expected_color_grid_heigth // 2) + 250 
 
         self.placement_phase_color_grid_rects = []
         x, y = self.color_grid_origin
         for i in range(self.len_ant_colors):
             if i % self.ROWS == 0 and i != 0:
-                x, y = self.color_grid_origin[0], self.color_grid_origin[1] + (self.colored_cell_size + self.color_grid_cell_offset)
+                x = self.color_grid_origin[0]
+                y = self.color_grid_origin[1] + (self.colored_cell_size + self.color_grid_cell_offset)
             self.placement_phase_color_grid_rects.append(pygame.Rect(x, y, self.colored_cell_size, self.colored_cell_size))
             x += (self.colored_cell_size + self.color_grid_cell_offset)
+
+        #Initial draw calls
+        self.draw_colors_grid()
 
     def run(self):
         while True:
@@ -102,11 +110,23 @@ class App:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE and self.is_placement_phase:
                         self.is_placement_phase = False
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.is_placement_phase:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.is_placement_phase: #Start simulation event
                     if self.start_button_rect.collidepoint(event.pos) and self.is_simulation_ready():
-                        self.is_placement_phase = False
+                        self.is_placement_phase = False #Toggle to simulation phase
+                        #Update start button text color
                         self.start_button_text = self.button_font.render('Start', True, 'white')
                         self.screen.blit(self.start_button_text, self.start_button_rect)
+
+                        #Hide placement grid
+                        coverup_surf = pygame.Surface(self.placement_phase_grid.get_size())
+                        self.screen.blit(coverup_surf, self.placement_phase_grid_rect)
+
+                        #Hide color grid
+                        coverup_surf = pygame.Surface((self.expected_color_grid_width, self.expected_color_grid_heigth))
+                        self.screen.blit(coverup_surf, (self.color_grid_origin[0], self.color_grid_origin[1]))
+
+                        #Draw simulation grid
+                        self.screen.blit(self.simulation_phase_grid, self.simulation_phase_grid_rect)
 
                     elif self.placement_phase_grid_rect.collidepoint(event.pos) and self.current_selected_color_name != None:
                         self.update_placement_grid(event.pos)
@@ -127,7 +147,6 @@ class App:
                 self.screen.blit(self.ant_counter_text, self.ant_counter_rect)
 
                 self.draw_ants_placement_grid()
-                self.draw_colors_grid()
 
             else:
                 coverup_surf = pygame.Surface(self.white_cell_counter_text.get_size())
@@ -146,8 +165,11 @@ class App:
 
                 [ant.run() for ant in self.ants]
 
+                #Draw simulation grid again to cover up ant drawn rects (not necessary added for aesthetic reasons)
+                self.screen.blit(self.simulation_phase_grid, self.simulation_phase_grid_rect)
+
             pygame.display.flip()
-            self.clock.tick(30)
+            self.clock.tick(self.MAX_FPS)
 
     def get_white_cells(self):
         return sum(cell for row in self.grid for cell in row)
@@ -188,7 +210,6 @@ class App:
                 self.current_selected_color_name = self.ant_colors[i]
                 return self.ant_colors[i]
         return None
-
 
     def draw_colors_grid(self):
         for i in range(self.len_ant_colors):
