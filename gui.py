@@ -1,13 +1,14 @@
 import pygame
 from collections import deque
-from random import randrange
 
 class Ant:
     def __init__(self, app, pos, color):
         self.app = app
         self.sprite = None
-        self.color = color
         self.x, self.y = pos
+        self.rect = pygame.Rect(self.app.placement_grid_offset[0] + self.x * self.app.CELL_SIZE, self.app.placement_grid_offset[1] + self.y * self.app.CELL_SIZE, 
+                                self.app.CELL_SIZE, self.app.CELL_SIZE)
+        self.color = color
         self.increments = deque([(1, 0), (0, 1), (-1, 0), (0, -1)])
 
     def run(self):
@@ -15,7 +16,7 @@ class Ant:
             value = self.app.grid[self.y][self.x]
             self.app.grid[self.y][self.x] = not value
 
-            SIZE = self.app.self.CELL_SIZE
+            SIZE = self.app.CELL_SIZE
             rect = self.x * SIZE, self.y * SIZE, max(SIZE - 1, 1), max(SIZE - 1, 1)
             
             if value:
@@ -39,7 +40,7 @@ class App:
         self.clock = pygame.time.Clock()
         self.grid = [[0 for col in range(self.COLS)] for row in range(self.COLS)]
 
-        self.colors = set('greenyellow goldenrod2 fuchsia deeppink4 cornflowerblue darkred darkslategrey blueviolet mediumpurple3 indigo crimson seagreen1 salmon1 purple2 plum3 palevioletred violetred springgreen4 \
+        self.ant_colors = set('greenyellow goldenrod2 fuchsia deeppink4 cornflowerblue darkred darkslategrey blueviolet mediumpurple3 indigo crimson seagreen1 salmon1 purple2 plum3 palevioletred violetred springgreen4 \
                           steelblue4 steelblue slateblue4 slateblue sienna2 cyan skyblue purple magenta red green blue yellow \
                           white'.split())
         
@@ -104,7 +105,8 @@ class App:
                 self.ant_counter_rect.center = (225 - 15 * len(str(num_ants)), 300)
                 self.screen.blit(self.ant_counter_text, self.ant_counter_rect)
 
-                self.draw_placement_grid()
+                self.draw_ants_placement_grid()
+                self.draw_colors_grid()
 
             else:
                 coverup_surf = pygame.Surface(self.white_cell_counter_text.get_size())
@@ -136,25 +138,34 @@ class App:
         relative_mouse_pos = pos[0] - self.placement_grid_offset[0], pos[1] - self.placement_grid_offset[1]
         x, y = relative_mouse_pos
         column, row = x // self.CELL_SIZE, y // self.CELL_SIZE
-        ant = Ant(self, (column, row), 'white')
+        ant = Ant(self, (column, row), 'purple')
         self.ants.append(ant)
         self.grid[column][row] = 1
 
         color_int = pygame.Color(ant.color)  # Convert named color to integer color
         sprite_pixel_array = pygame.PixelArray(self.ant_base_sprite)
-        for i in range(sprite_pixel_array.shape[0]):
-            for j in range(sprite_pixel_array.shape[1]):
+        width, height = sprite_pixel_array.shape
+
+        for i in range(width):
+            for j in range(height):
                 pixel_color = self.ant_base_sprite.unmap_rgb(sprite_pixel_array[i, j])  # Get the color of the pixel
-                if pygame.Color(pixel_color).a != 0:  # Check if the pixel is not fully transparent
-                    sprite_pixel_array[i, j] = (color_int.r, color_int.g, color_int.b)
-        
+                original_color = pygame.Color(pixel_color)
+                if original_color.a != 0:  # Check if the pixel is not fully transparent
+                    new_color = pygame.Color(color_int.r, color_int.g, color_int.b, original_color.a)
+                    sprite_pixel_array[i, j] = self.ant_base_sprite.map_rgb(new_color)
+                
         ant.sprite = sprite_pixel_array.make_surface()  # Creates a new surface with the new pixel array.
         del sprite_pixel_array  # Delete the pixel array to unlock the surface
 
-    def draw_placement_grid(self):
-        grid_origin_x, grid_origin_y = self.placement_grid_offset
+    def draw_ants_placement_grid(self):
         for ant in self.ants:
-            self.screen.blit(ant.sprite, (grid_origin_x + ant.x * self.CELL_SIZE, grid_origin_y + ant.y * self.CELL_SIZE))
+            self.screen.blit(ant.sprite, ant.rect)
+
+    def draw_colors_grid(self):
+        grid_origin = self.placement_phase_grid_rect.bottomleft[0], self.placement_phase_grid_rect.bottomleft[1] + 100
+        for color in self.ant_colors:
+            pygame.draw.rect(self.screen, color, (grid_origin[0], grid_origin[1], 50, 50))
+            grid_origin = grid_origin[0] + 60, grid_origin[1]
     
 if __name__ == "__main__":
     app = App()
