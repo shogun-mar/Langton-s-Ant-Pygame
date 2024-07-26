@@ -24,7 +24,6 @@ class Ant:
         self.x = (self.x + dx) % self.app.COLS
         self.y = (self.y + dy) % self.app.ROWS
 
-
 class App:
     def __init__(self, WIDTH = 1600, HEIGHT = 900, CELL_SIZE = 1, NUM_ANTS = 50):
         pygame.init()
